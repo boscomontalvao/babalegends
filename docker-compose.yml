@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: babalegends-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: babalegends
+      POSTGRES_USER: babalegends
+      POSTGRES_PASSWORD: babalegends
+    ports:
+      - "5432:5432"
+    volumes:
+      - babalegends_pgdata:/var/lib/postgresql/data
+
+volumes:
+  babalegends_pgdata:
