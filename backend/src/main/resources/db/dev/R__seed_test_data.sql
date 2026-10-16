@@ -2,7 +2,7 @@
 -- Repeatable migration: roda sempre que o conteudo deste arquivo mudar.
 -- Senha de todos os usuarios de teste: "password123"
 
-INSERT INTO users (id, name, email, password, picture)
+INSERT INTO tb_user (user_id, name, email, password, picture)
 VALUES ('00000000-0000-0000-0000-000000000001', 'Ana Silva', 'ana@example.com',
         '$2b$12$8kM0C23QfkclDT5gOVZnWeXo5CUwTcZP.45YNA5juCdvg7mClA7qu', NULL),
        ('00000000-0000-0000-0000-000000000002', 'Bruno Costa', 'bruno@example.com',
@@ -22,9 +22,10 @@ VALUES ('00000000-0000-0000-0000-000000000001', 'Ana Silva', 'ana@example.com',
        ('00000000-0000-0000-0000-000000000009', 'Igor Pereira', 'igor@example.com',
         '$2b$12$8kM0C23QfkclDT5gOVZnWeXo5CUwTcZP.45YNA5juCdvg7mClA7qu', NULL),
        ('00000000-0000-0000-0000-000000000010', 'Joao Ferreira', 'joao@example.com',
-        '$2b$12$8kM0C23QfkclDT5gOVZnWeXo5CUwTcZP.45YNA5juCdvg7mClA7qu', NULL) ON CONFLICT (id) DO NOTHING;
+        '$2b$12$8kM0C23QfkclDT5gOVZnWeXo5CUwTcZP.45YNA5juCdvg7mClA7qu', NULL)
+ON CONFLICT (user_id) DO NOTHING;
 
-INSERT INTO player_attributes (user_id, overall, pace, shooting, passing, dribbling, defending, physicality)
+INSERT INTO tb_player_attributes (user_id, overall, pace, shooting, passing, dribbling, defending, physicality)
 VALUES ('00000000-0000-0000-0000-000000000001', 78, 82, 75, 70, 80, 60, 72),
        ('00000000-0000-0000-0000-000000000002', 65, 60, 68, 65, 62, 70, 68),
        ('00000000-0000-0000-0000-000000000003', 72, 74, 70, 68, 75, 65, 70),
@@ -36,10 +37,11 @@ VALUES ('00000000-0000-0000-0000-000000000001', 78, 82, 75, 70, 80, 60, 72),
        ('00000000-0000-0000-0000-000000000009', 75, 70, 72, 76, 74, 62, 70),
        ('00000000-0000-0000-0000-000000000010', 62, 64, 60, 58, 60, 66, 63) ON CONFLICT (user_id) DO NOTHING;
 
-INSERT INTO groups (id, name)
-VALUES ('00000000-0000-0000-0000-000000000101', 'Pelada de Quinta') ON CONFLICT (id) DO NOTHING;
+INSERT INTO tb_group (group_id, name)
+VALUES ('00000000-0000-0000-0000-000000000101', 'Pelada de Quinta')
+ON CONFLICT (group_id) DO NOTHING;
 
-INSERT INTO group_members (group_id, user_id, role)
+INSERT INTO tb_group_member (group_id, user_id, role)
 VALUES ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000001', 'admin'),
        ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000002', 'member'),
        ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000003', 'member'),
@@ -52,11 +54,12 @@ VALUES ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-0000000
        ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000010',
         'member') ON CONFLICT (group_id, user_id) DO NOTHING;
 
-INSERT INTO matches (id, group_id, scheduled_at, location, slots, status)
+INSERT INTO tb_match (match_id, group_id, scheduled_at, location, slots, status)
 VALUES ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000101', now() + interval '3 days',
-        'Society Gol de Placa', 10, 'scheduled') ON CONFLICT (id) DO NOTHING;
+        'Society Gol de Placa', 10, 'scheduled')
+ON CONFLICT (match_id) DO NOTHING;
 
-INSERT INTO attendances (match_id, user_id, status, responded_at)
+INSERT INTO tb_attendance (match_id, user_id, status, responded_at)
 VALUES ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000001', 'confirmed', now()),
        ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000002', 'confirmed', now()),
        ('00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000003', 'confirmed', now()),
