@@ -38,12 +38,12 @@ public class User {
     @Column(nullable = false,  unique = true)
     private String email;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     @JsonIgnore
     @ToString.Exclude
     private String password;
 
-    @Column(length = 255)
+    @Column()
     private String picture;
 
     @Column(name = "created_at", nullable = false, updatable = false)
