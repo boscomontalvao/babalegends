@@ -5,11 +5,13 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Objects;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -21,8 +23,8 @@ public class JwtTokenProvider {
     private String jwtSecret;
 
     public String generateJwtToken(Authentication authentication) {
-        UserDetails user = (UserDetails) authentication.getPrincipal();
-        return buildJwtToken(user.getUsername());
+        UserPrincipal principal = Objects.requireNonNull((UserPrincipal) authentication.getPrincipal());
+        return buildJwtToken(principal.getId().toString());
     }
 
     public boolean isTokenValid(String jwtToken) {
@@ -34,29 +36,29 @@ public class JwtTokenProvider {
         }
     }
 
-    public String getUserName(String jwtToken) {
-        return getClaims(jwtToken).getSubject();
+    public UUID getUserId(String jwtToken) {
+        return UUID.fromString(getClaims(jwtToken).getSubject());
     }
 
-    private String buildJwtToken(String userName) {
+    private String buildJwtToken(String userId) {
         Date now = new Date();
         Date expirationTime = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
-                .subject(userName)
+                .subject(userId)
                 .issuedAt(now)
                 .expiration(expirationTime)
-                .signWith(getSingingKey())
+                .signWith(getSigningKey())
                 .compact();
     }
 
-    private SecretKey getSingingKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     private Claims getClaims(String jwtToken) {
         return Jwts.parser()
-                .verifyWith(getSingingKey())
+                .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(jwtToken)
                 .getPayload();
