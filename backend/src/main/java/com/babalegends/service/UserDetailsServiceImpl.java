@@ -1,6 +1,6 @@
 package com.babalegends.service;
 
-import com.babalegends.entity.User;
+import com.babalegends.exception.NotFoundException;
 import com.babalegends.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,7 +15,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserPrincipal loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userService.getUserByEmail(username);
-        return new UserPrincipal(user);
+        try {
+            return new UserPrincipal(userService.getUserByEmail(username));
+        } catch (NotFoundException e) {
+            throw new UsernameNotFoundException("User not found");
+        }
     }
 }
