@@ -31,6 +31,16 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final FileStorageService fileStorageService;
+    private final AttendanceService attendanceService;
+
+    public boolean isMember(UUID groupId, UUID userId) {
+        return groupMemberRepository.existsByGroupIdAndUserId(groupId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<GroupMember> getMembers(UUID groupId) {
+        return groupMemberRepository.findAllByGroupIdWithUser(groupId);
+    }
 
     @Transactional(readOnly = true)
     public List<GroupResponseDto> listMyGroups(UUID requesterId) {
@@ -40,10 +50,10 @@ public class GroupService {
     }
 
     @Transactional(readOnly = true)
-    public List<MemberResponseDto> listGroupMembers(UUID requesterId, UUID groupId) {
+    public List<MemberResponseDto> listMyGroupMembers(UUID requesterId, UUID groupId) {
         requireMember(groupId, requesterId);
         return groupMemberRepository.findAllByGroupIdWithUser(groupId).stream()
-                .map(member -> MemberResponseDto.from(member, getUserPictureUrl(member.getUser())))
+                .map(member -> MemberResponseDto.from(member, userService.getUserPictureUrl(member.getUser())))
                 .toList();
     }
 
@@ -102,8 +112,10 @@ public class GroupService {
         membership.setGroup(me.getGroup());
         membership.setRole(GroupRole.MEMBER);
         groupMemberRepository.save(membership);
+        attendanceService.createPendingForUpcomingMatches(groupId, newUser);
 
-        return MemberResponseDto.from(membership, getUserPictureUrl(newUser));
+
+        return MemberResponseDto.from(membership, userService.getUserPictureUrl(newUser));
     }
 
     @Transactional
@@ -115,7 +127,7 @@ public class GroupService {
         GroupMember target = findMemberOrThrow(groupId, targetUserId);
 
         if (target.getRole() == newRole) {
-            return MemberResponseDto.from(target, getUserPictureUrl(target.getUser()));
+            return MemberResponseDto.from(target, userService.getUserPictureUrl(target.getUser()));
         }
 
         if (target.getRole() == GroupRole.ADMIN) {
@@ -123,7 +135,7 @@ public class GroupService {
         }
 
         target.setRole(newRole);
-        return MemberResponseDto.from(target, getUserPictureUrl(target.getUser()));
+        return MemberResponseDto.from(target, userService.getUserPictureUrl(target.getUser()));
     }
 
     @Transactional
@@ -142,13 +154,13 @@ public class GroupService {
         }
 
         groupMemberRepository.delete(target);
-        // TODO (MatchService): apagar as presenças dele nas partidas ainda SCHEDULED deste grupo
+        attendanceService.removeFromUpcomingMatches(groupId, targetUserId);
     }
 
     public GroupMember requireCanSchedule(UUID groupId, UUID userId) {
         GroupMember me = requireMember(groupId, userId);
 
-        if (me.getRole() != GroupRole.ADMIN || !me.getGroup().isAllowMemberScheduling()) {
+        if (me.getRole() != GroupRole.ADMIN && !me.getGroup().isAllowMemberScheduling()) {
             throw new ForbiddenException("Only group admin can schedule matches in this group.");
         }
 
@@ -180,10 +192,6 @@ public class GroupService {
     private GroupMember findMemberOrThrow(UUID groupId, UUID userId) {
         return groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
                 .orElseThrow(() -> new NotFoundException("Member not found in this group"));
-    }
-
-    private String getUserPictureUrl(User user) {
-        return user.getPicture() == null ? null : fileStorageService.urlFor(user.getPicture());
     }
 
     private void ensureNotLastAdmin(UUID groupId) {

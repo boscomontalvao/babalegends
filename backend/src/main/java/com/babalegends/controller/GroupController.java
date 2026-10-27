@@ -45,7 +45,7 @@ public class GroupController {
     @GetMapping("/{groupId}/members")
     public ResponseEntity<List<MemberResponseDto>> listMembers(@AuthenticationPrincipal UserPrincipal principal,
                                                                @PathVariable UUID groupId) {
-        return ResponseEntity.ok(groupService.listGroupMembers(principal.getId(), groupId));
+        return ResponseEntity.ok(groupService.listMyGroupMembers(principal.getId(), groupId));
     }
 
     @PostMapping

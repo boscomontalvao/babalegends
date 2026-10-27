@@ -135,6 +135,10 @@ public class UserService {
         return UserResponseDto.from(user, fileStorageService.urlFor(user.getPicture()));
     }
 
+    public String getUserPictureUrl(User user) {
+        return user.getPicture() == null ? null : fileStorageService.urlFor(user.getPicture());
+    }
+
     private void deleteAfterCommit(String key) {
         if (key == null) {
             return;
