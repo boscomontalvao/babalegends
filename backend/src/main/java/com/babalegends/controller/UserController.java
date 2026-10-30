@@ -1,5 +1,6 @@
 package com.babalegends.controller;
 
+import com.babalegends.dto.CardResponseDto;
 import com.babalegends.dto.UpdateUserPasswordRequestDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
 import com.babalegends.dto.UserResponseDto;
@@ -29,6 +30,11 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserResponseDto> getLoggedUser(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(userService.getProfile(principal.getId()));
+    }
+
+    @GetMapping("/me/card")
+    public ResponseEntity<CardResponseDto> getMyCard(@AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(userService.getMyCard(principal.getId()));
     }
 
     @PatchMapping("/me")

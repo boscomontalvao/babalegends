@@ -1,7 +1,9 @@
 package com.babalegends.service;
 
+import com.babalegends.dto.CardResponseDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
 import com.babalegends.dto.UserResponseDto;
+import com.babalegends.entity.PlayerAttributes;
 import com.babalegends.entity.User;
 import com.babalegends.exception.BadRequestException;
 import com.babalegends.exception.ConflictException;
@@ -129,6 +131,24 @@ public class UserService {
 
         deleteAfterCommit(oldKey);
         return userToUserResponseDto(user);
+    }
+
+    @Transactional(readOnly = true)
+    public CardResponseDto getMyCard(UUID userId) {
+        User user = getById(userId);
+        PlayerAttributes userAttributes = playerAttributesService.getByUserId(userId);
+        return new CardResponseDto(
+                user.getId(),
+                user.getName(),
+                getUserPictureUrl(user),
+                userAttributes.getOverall(),
+                userAttributes.getPace(),
+                userAttributes.getShooting(),
+                userAttributes.getPassing(),
+                userAttributes.getDribbling(),
+                userAttributes.getDefending(),
+                userAttributes.getPhysicality()
+        );
     }
 
     public UserResponseDto userToUserResponseDto(User user) {
