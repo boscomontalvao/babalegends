@@ -128,7 +128,7 @@ public class MatchService {
             throw new ConflictException("Cannot complete a match that doesn't happen;");
         }
         match.setCompletedAt(Instant.now());
-        match.setStatus(MatchStatus.COMPLETE);
+        match.setStatus(MatchStatus.COMPLETED);
         return MatchResponseDto.from(match, confirmedCount);
     }
 

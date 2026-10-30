@@ -25,4 +25,10 @@ public interface MatchRepository extends JpaRepository<Match, UUID> {
     List<Match> findByGroupIdOrderByScheduledAtDesc(UUID groupId);
 
     List<Match> findByGroupIdAndStatus(UUID groupId, MatchStatus status);
+
+    @Query("""
+            select m.id from Match m
+            where m.status = :status and m.votesAppliedAt is null and m.completedAt <= :completedBefore
+            """)
+    List<UUID> findMatchIdsToCloseVoting(MatchStatus status, Instant completedBefore);
 }

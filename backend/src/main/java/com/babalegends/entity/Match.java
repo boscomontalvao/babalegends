@@ -52,6 +52,9 @@ public class Match {
     @Column(name = "completed_at")
     private Instant completedAt;
 
+    @Column(name = "votes_applied_at")
+    private Instant votesAppliedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id", nullable = false)
     private Group group;
