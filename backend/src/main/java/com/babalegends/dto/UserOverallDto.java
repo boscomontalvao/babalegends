@@ -1,6 +1,15 @@
 package com.babalegends.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.UUID;
 
-public record UserOverallDto(UUID userId, Short overall) {
+@Schema(description = "Nota geral média (overall) de um jogador")
+public record UserOverallDto(
+        @Schema(description = "Identificador único do usuário", example = "123e4567-e89b-12d3-a456-426614174000")
+        UUID userId,
+
+        @Schema(description = "Nota geral consolidada do jogador", example = "85")
+        Short overall
+) {
 }
