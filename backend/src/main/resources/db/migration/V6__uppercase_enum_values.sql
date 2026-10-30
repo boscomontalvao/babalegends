@@ -1,4 +1,4 @@
--- V7__uppercase_enum_values.sql
+-- V6__uppercase_enum_values.sql
 -- Os enums Java (@Enumerated(EnumType.STRING)) esperam os nomes em maiusculo:
 -- ADMIN/MEMBER, SCHEDULED/CANCELLED/COMPLETED, PENDING/CONFIRMED/DECLINED.
 -- Corrige os dados existentes e os DEFAULT das colunas.
