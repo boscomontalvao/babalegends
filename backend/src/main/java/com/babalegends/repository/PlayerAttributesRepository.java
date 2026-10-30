@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -19,4 +20,8 @@ public interface PlayerAttributesRepository extends JpaRepository<PlayerAttribut
             where pa.user.id in :userIds
             """)
     List<UserOverallDto> findOverallByUserIds(Collection<UUID> userIds);
+
+    List<PlayerAttributes> findByUserIdIn(Collection<UUID> userIds);
+
+    Optional<PlayerAttributes> findByUserId(UUID userId);
 }
