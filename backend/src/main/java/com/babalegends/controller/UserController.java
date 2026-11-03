@@ -1,6 +1,5 @@
 package com.babalegends.controller;
 
-import com.babalegends.dto.CardResponseDto;
 import com.babalegends.dto.DeleteAccountRequestDto;
 import com.babalegends.dto.UpdateUserPasswordRequestDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
@@ -35,12 +34,6 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserResponseDto> getLoggedUser(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(userService.getProfile(principal.getId()));
-    }
-
-    @Operation(summary = "Obter meu Card de jogador", description = "Retorna a carta de atributos estilo FIFA/Ultimate Team com overall e métricas do jogador.")
-    @GetMapping("/me/card")
-    public ResponseEntity<CardResponseDto> getMyCard(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(userService.getMyCard(principal.getId()));
     }
 
     @Operation(summary = "Atualizar nome ou e-mail", description = "Atualiza o nome e/ou e-mail do usuário autenticado (requer senha atual caso altere o e-mail).")

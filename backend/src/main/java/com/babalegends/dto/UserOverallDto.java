@@ -10,6 +10,9 @@ public record UserOverallDto(
         UUID userId,
 
         @Schema(description = "Nota geral consolidada do jogador", example = "85")
-        Short overall
+        Short overall,
+
+        @Schema(description = "Chave da foto personalizada da carta do jogador no armazenamento", example = "cards/123e4567-e89b-12d3-a456-426614174000.jpg")
+        String cardPicture
 ) {
 }

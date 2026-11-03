@@ -51,5 +51,5 @@ public class User {
     private Instant createdAt;
 
     @Column(name = "deleted_at")
-    private Instant deleteAt;
+    private Instant deletedAt;
 }

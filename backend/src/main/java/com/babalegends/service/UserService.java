@@ -1,16 +1,16 @@
 package com.babalegends.service;
 
-import com.babalegends.dto.CardResponseDto;
 import com.babalegends.dto.DeleteAccountRequestDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
 import com.babalegends.dto.UserResponseDto;
-import com.babalegends.entity.PlayerAttributes;
 import com.babalegends.entity.User;
 import com.babalegends.event.UserDeletionEvent;
 import com.babalegends.exception.BadRequestException;
 import com.babalegends.exception.ConflictException;
 import com.babalegends.exception.NotFoundException;
 import com.babalegends.infrastructure.FileStorageService;
+import com.babalegends.infrastructure.FileTransactionSupport;
+import com.babalegends.mapper.CardMapper;
 import com.babalegends.repository.UserRepository;
 import com.babalegends.util.ImageTypeDetector;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +19,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
@@ -36,7 +34,9 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PlayerAttributesService playerAttributesService;
     private final FileStorageService fileStorageService;
+    private final FileTransactionSupport fileTransactionSupport;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final CardMapper cardMapper;
 
     @Transactional(readOnly = true)
     public UserResponseDto getProfile(UUID userId) {
@@ -57,7 +57,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User getActiveUserById(UUID userId) {
         return userRepository.findById(userId)
-                .filter(user -> user.getDeleteAt() == null)
+                .filter(user -> user.getDeletedAt() == null)
                 .orElseThrow(() -> new NotFoundException("User not found."));
     }
 
@@ -124,12 +124,12 @@ public class UserService {
 
         String oldKey = user.getPicture();
         String newKey = fileStorageService.store("profile", image, detectedImageExtension);
-        deleteOnRollback(newKey);
+        fileTransactionSupport.deleteOnRollback(newKey);
 
         user.setPicture(newKey);
         userRepository.save(user);
 
-        deleteAfterCommit(oldKey);
+        fileTransactionSupport.deleteAfterCommit(oldKey);
         return userToUserResponseDto(user);
     }
 
@@ -141,26 +141,8 @@ public class UserService {
         user.setPicture(null);
         userRepository.save(user);
 
-        deleteAfterCommit(oldKey);
+        fileTransactionSupport.deleteAfterCommit(oldKey);
         return userToUserResponseDto(user);
-    }
-
-    @Transactional(readOnly = true)
-    public CardResponseDto getMyCard(UUID userId) {
-        User user = getById(userId);
-        PlayerAttributes userAttributes = playerAttributesService.getByUserId(userId);
-        return new CardResponseDto(
-                user.getId(),
-                user.getName(),
-                getUserPictureUrl(user),
-                userAttributes.getOverall(),
-                userAttributes.getPace(),
-                userAttributes.getShooting(),
-                userAttributes.getPassing(),
-                userAttributes.getDribbling(),
-                userAttributes.getDefending(),
-                userAttributes.getPhysicality()
-        );
     }
 
     @Transactional
@@ -173,13 +155,15 @@ public class UserService {
 
         applicationEventPublisher.publishEvent(new UserDeletionEvent(userId));
 
+        String cardPictureKey = playerAttributesService.clearCardPicture(userId);
         String userPicture = user.getPicture();
         user.setEmail("delete-" + user.getId() + "@deleted.invalid");
         user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
         user.setPicture(null);
-        user.setDeleteAt(Instant.now());
+        user.setDeletedAt(Instant.now());
 
-        deleteAfterCommit(userPicture);
+        fileTransactionSupport.deleteAfterCommit(cardPictureKey);
+        fileTransactionSupport.deleteAfterCommit(userPicture);
     }
 
     public UserResponseDto userToUserResponseDto(User user) {
@@ -188,37 +172,6 @@ public class UserService {
 
     public String getUserPictureUrl(User user) {
         return user.getPicture() == null ? null : fileStorageService.urlFor(user.getPicture());
-    }
-
-    private void deleteAfterCommit(String key) {
-        if (key == null) {
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    fileStorageService.delete(key);
-                } catch (RuntimeException e) {
-                    log.warn("Could not delete old file {}", key, e);
-                }
-            }
-        });
-    }
-
-    private void deleteOnRollback(String key) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_ROLLED_BACK) {
-                    try {
-                        fileStorageService.delete(key);
-                    } catch (RuntimeException e) {
-                        log.warn("Could not clean up file {}", key, e);
-                    }
-                }
-            }
-        });
     }
 
     private void verifyCurrentPassword(User user, String currentPassword) {

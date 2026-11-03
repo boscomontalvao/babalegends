@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface PlayerAttributesRepository extends JpaRepository<PlayerAttributes, UUID> {
 
     @Query("""
-            select new com.babalegends.dto.UserOverallDto(pa.user.id, pa.overall)
+            select new com.babalegends.dto.UserOverallDto(pa.user.id, pa.overall, pa.cardPicture)
             from PlayerAttributes pa
             where pa.user.id in :userIds
             """)
