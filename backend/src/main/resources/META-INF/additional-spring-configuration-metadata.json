@@ -1,0 +1,49 @@
+{
+  "properties": [
+    {
+      "name": "app.storage.type",
+      "type": "java.lang.String",
+      "description": "Storage provider type (e.g. local, s3)."
+    },
+    {
+      "name": "app.upload-dir",
+      "type": "java.lang.String",
+      "description": "Directory for local file uploads."
+    },
+    {
+      "name": "app.public-base-url",
+      "type": "java.lang.String",
+      "description": "Base URL to serve public uploaded files."
+    },
+    {
+      "name": "app.voting.window-hours",
+      "type": "java.lang.Integer",
+      "description": "Hours window where voting is open after a match."
+    },
+    {
+      "name": "app.voting.close-check-interval-ms",
+      "type": "java.lang.Long",
+      "description": "Interval in milliseconds between checks for closed votings."
+    },
+    {
+      "name": "app.cards.min-raters",
+      "type": "java.lang.Integer",
+      "description": "Minimum raters required to evaluate a card."
+    },
+    {
+      "name": "app.cards.learning-rate",
+      "type": "java.lang.Double",
+      "description": "Learning rate for card ratings."
+    },
+    {
+      "name": "jwt.expiration",
+      "type": "java.lang.Long",
+      "description": "JWT expiration time in milliseconds."
+    },
+    {
+      "name": "jwt.secret",
+      "type": "java.lang.String",
+      "description": "JWT secret key."
+    }
+  ]
+}
