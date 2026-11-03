@@ -1,6 +1,7 @@
 package com.babalegends.controller;
 
 import com.babalegends.dto.CardResponseDto;
+import com.babalegends.dto.DeleteAccountRequestDto;
 import com.babalegends.dto.UpdateUserPasswordRequestDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
 import com.babalegends.dto.UserResponseDto;
@@ -69,5 +70,13 @@ public class UserController {
     @DeleteMapping("/me/picture")
     public ResponseEntity<UserResponseDto> deleteUserProfilePicture(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(userService.removeUserProfilePicture(principal.getId()));
+    }
+
+    @Operation(summary = "Excluir conta de usuário", description = "Realiza a desativação permanente (soft delete) da conta do usuário autenticado mediante confirmação de senha.")
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal UserPrincipal principal,
+                                              @Valid @RequestBody DeleteAccountRequestDto request) {
+        userService.deleteMyAccount(principal.getId(), request);
+        return ResponseEntity.noContent().build();
     }
 }

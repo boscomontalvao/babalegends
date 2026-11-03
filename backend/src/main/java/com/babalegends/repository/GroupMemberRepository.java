@@ -1,6 +1,7 @@
 package com.babalegends.repository;
 
 import com.babalegends.entity.GroupMember;
+import com.babalegends.entity.User;
 import com.babalegends.entity.enums.GroupRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,8 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
 
     boolean existsByGroupIdAndUserId(UUID groupId, UUID userId);
 
+    long countByGroupId(UUID groupId);
+
     long countByGroupIdAndRole(UUID groupId, GroupRole role);
 
     @Query("select gm from GroupMember gm join fetch gm.group where gm.user.id = :userId order by gm.group.name")
@@ -24,4 +27,6 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> 
 
     @Query("select gm from GroupMember gm join fetch gm.user where gm.group.id = :groupId order by gm.group.name")
     List<GroupMember> findAllByGroupIdWithUser(UUID groupId);
+
+    UUID user(User user);
 }

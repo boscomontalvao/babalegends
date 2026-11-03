@@ -9,6 +9,7 @@ import com.babalegends.entity.Group;
 import com.babalegends.entity.GroupMember;
 import com.babalegends.entity.User;
 import com.babalegends.entity.enums.GroupRole;
+import com.babalegends.event.UserDeletionEvent;
 import com.babalegends.exception.BadRequestException;
 import com.babalegends.exception.ConflictException;
 import com.babalegends.exception.ForbiddenException;
@@ -17,9 +18,11 @@ import com.babalegends.infrastructure.FileStorageService;
 import com.babalegends.repository.GroupMemberRepository;
 import com.babalegends.repository.GroupRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -136,6 +139,39 @@ public class GroupService {
 
         target.setRole(newRole);
         return MemberResponseDto.from(target, userService.getUserPictureUrl(target.getUser()));
+    }
+
+
+    @EventListener
+    @Transactional
+    public void onUserDeletion(UserDeletionEvent event) {
+        UUID userId = event.userId();
+
+        List<GroupMember> userGroupsMembership = groupMemberRepository.findAllByUserIdWithGroup(userId)
+                .stream()
+                .sorted(Comparator.comparing(membership -> membership.getGroup().getId()))
+                .toList();
+
+        userGroupsMembership.forEach(membership -> lockGroup(membership.getGroup().getId()));
+
+        List<String> blockingGroups = userGroupsMembership.stream()
+                .filter(membership -> membership.getRole() == GroupRole.ADMIN)
+                .filter(userAdminGroups -> groupMemberRepository.countByGroupIdAndRole(
+                        userAdminGroups.getGroup().getId(), GroupRole.ADMIN) == 1)
+                .filter(userAdminGroups -> groupMemberRepository.countByGroupId(
+                        userAdminGroups.getGroup().getId()) > 1)
+                .map(userAdminGroups -> userAdminGroups.getGroup().getName())
+                .toList();
+        if (!blockingGroups.isEmpty()) {
+            throw new ConflictException("You are the only admin of: " + String.join(", ", blockingGroups)
+                    + ". Promote another admin in each of them before deleting your account");
+        }
+
+        for (GroupMember groupMember : userGroupsMembership) {
+            attendanceService.removeFromUpcomingMatches(groupMember.getGroup().getId(),
+                    groupMember.getUser().getId());
+        }
+        groupMemberRepository.deleteAll(userGroupsMembership);
     }
 
     @Transactional

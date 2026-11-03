@@ -1,10 +1,12 @@
 package com.babalegends.service;
 
 import com.babalegends.dto.CardResponseDto;
+import com.babalegends.dto.DeleteAccountRequestDto;
 import com.babalegends.dto.UpdateUserProfileRequestDto;
 import com.babalegends.dto.UserResponseDto;
 import com.babalegends.entity.PlayerAttributes;
 import com.babalegends.entity.User;
+import com.babalegends.event.UserDeletionEvent;
 import com.babalegends.exception.BadRequestException;
 import com.babalegends.exception.ConflictException;
 import com.babalegends.exception.NotFoundException;
@@ -13,6 +15,7 @@ import com.babalegends.repository.UserRepository;
 import com.babalegends.util.ImageTypeDetector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -32,6 +36,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PlayerAttributesService playerAttributesService;
     private final FileStorageService fileStorageService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional(readOnly = true)
     public UserResponseDto getProfile(UUID userId) {
@@ -46,6 +51,13 @@ public class UserService {
 
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found."));
+    }
+
+    @Transactional(readOnly = true)
+    public User getActiveUserById(UUID userId) {
+        return userRepository.findById(userId)
+                .filter(user -> user.getDeleteAt() == null)
                 .orElseThrow(() -> new NotFoundException("User not found."));
     }
 
@@ -149,6 +161,25 @@ public class UserService {
                 userAttributes.getDefending(),
                 userAttributes.getPhysicality()
         );
+    }
+
+    @Transactional
+    public void deleteMyAccount(UUID userId, DeleteAccountRequestDto deleteAccountRequestDto) {
+        User user = getById(userId);
+
+        if (!passwordEncoder.matches(deleteAccountRequestDto.password(), user.getPassword())) {
+            throw new BadRequestException("Password is incorrect.");
+        }
+
+        applicationEventPublisher.publishEvent(new UserDeletionEvent(userId));
+
+        String userPicture = user.getPicture();
+        user.setEmail("delete-" + user.getId() + "@deleted.invalid");
+        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setPicture(null);
+        user.setDeleteAt(Instant.now());
+
+        deleteAfterCommit(userPicture);
     }
 
     public UserResponseDto userToUserResponseDto(User user) {
