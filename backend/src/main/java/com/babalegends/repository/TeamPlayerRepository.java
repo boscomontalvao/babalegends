@@ -18,6 +18,16 @@ public interface TeamPlayerRepository extends JpaRepository<TeamPlayer, UUID> {
             """)
     List<TeamPlayer> findAllByMatchIdWithUserAndTeam(UUID matchId);
 
+    @Query("""
+            select tp from TeamPlayer tp
+            join fetch tp.user join fetch tp.team
+            where tp.team.match.id = :matchId
+                and tp.team.id = (
+                    select tp2.team.id from TeamPlayer tp2
+                    where tp2.team.match.id = :matchId and tp2.user.id = :userId)
+            """)
+    List<TeamPlayer> findMyTeamPlayersByMatchIdAndUserIdWithUserAndTeam(UUID matchId, UUID userId);
+
     @Modifying(flushAutomatically = true)
     @Query("""
             delete from TeamPlayer tp

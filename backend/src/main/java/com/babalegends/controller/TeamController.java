@@ -1,6 +1,7 @@
 package com.babalegends.controller;
 
 import com.babalegends.dto.DrawTeamsRequestDto;
+import com.babalegends.dto.MyTeamResponseDto;
 import com.babalegends.dto.TeamResponseDto;
 import com.babalegends.security.UserPrincipal;
 import com.babalegends.service.TeamService;
@@ -39,5 +40,12 @@ public class TeamController {
     public ResponseEntity<List<TeamResponseDto>> getTeam(@AuthenticationPrincipal UserPrincipal principal,
                                                          @PathVariable("matchId") UUID matchId) {
         return ResponseEntity.ok(teamService.getTeams(principal.getId(), matchId));
+    }
+
+    @Operation(summary = "Obter meu time na partida", description = "Retorna os dados da equipe na qual o usuário autenticado foi escalado, acompanhado dos cards detalhados de atributos de cada jogador.")
+    @GetMapping("/matches/{matchId}/teams/me")
+    public ResponseEntity<MyTeamResponseDto> getMyTeam(@AuthenticationPrincipal UserPrincipal principal,
+                                                       @PathVariable("matchId") UUID matchId) {
+        return ResponseEntity.ok(teamService.getMyTeam(principal.getId(), matchId));
     }
 }

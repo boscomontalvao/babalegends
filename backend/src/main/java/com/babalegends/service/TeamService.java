@@ -2,14 +2,18 @@ package com.babalegends.service;
 
 import com.babalegends.domain.RatedPlayer;
 import com.babalegends.domain.TeamBalancer;
+import com.babalegends.dto.CardResponseDto;
+import com.babalegends.dto.MyTeamResponseDto;
 import com.babalegends.dto.TeamPlayerResponseDto;
 import com.babalegends.dto.TeamResponseDto;
 import com.babalegends.entity.Match;
+import com.babalegends.entity.PlayerAttributes;
 import com.babalegends.entity.Team;
 import com.babalegends.entity.TeamPlayer;
 import com.babalegends.entity.User;
 import com.babalegends.entity.enums.MatchStatus;
 import com.babalegends.exception.ConflictException;
+import com.babalegends.exception.NotFoundException;
 import com.babalegends.repository.TeamPlayerRepository;
 import com.babalegends.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -126,6 +130,35 @@ public class TeamService {
         }).toList();
     }
 
+    @Transactional(readOnly = true)
+    public MyTeamResponseDto getMyTeam(UUID requesterId, UUID matchId) {
+        matchService.requireMatchAccess(requesterId, matchId);
+
+        List<TeamPlayer> myTeamPlayers = teamPlayerRepository.findMyTeamPlayersByMatchIdAndUserIdWithUserAndTeam(
+                matchId, requesterId);
+
+        if (myTeamPlayers.isEmpty()) {
+            throw new NotFoundException("You are not in a team for this match.");
+        }
+
+        List<UUID> myTeamPlayersIds = myTeamPlayers.stream()
+                .map(teamPlayer -> teamPlayer.getUser().getId())
+                .toList();
+
+        Map<UUID, PlayerAttributes> cardsByUserId = playerAttributesService.getAttributesByUserIds(myTeamPlayersIds);
+        List<CardResponseDto> players = myTeamPlayers.stream()
+                .map(teamPlayer -> convertAttributesToCardResponse(teamPlayer.getUser(), cardsByUserId.get(teamPlayer.getUser().getId())))
+                .sorted(Comparator.comparingInt(CardResponseDto::overall).reversed())
+                .toList();
+
+        int averageRating = (int) Math.round(players.stream()
+                .mapToInt(CardResponseDto::overall)
+                .average()
+                .orElse(0));
+
+        return new MyTeamResponseDto(myTeamPlayers.getFirst().getTeam().getName(), averageRating, players);
+    }
+
     private String teamName(int index) {
         return String.valueOf((char) ('A' + index));
     }
@@ -138,5 +171,19 @@ public class TeamService {
                 .toList();
         double average = members.stream().mapToInt(RatedPlayer::rating).average().orElse(0);
         return new TeamResponseDto(team.getId(), team.getName(), Math.round(average * 10) / 10.0, players);
+    }
+
+    private CardResponseDto convertAttributesToCardResponse(User user, PlayerAttributes card) {
+        return new CardResponseDto(
+                user.getId(),
+                user.getName(),
+                userService.getUserPictureUrl(user),
+                card.getOverall(),
+                card.getPace(),
+                card.getShooting(),
+                card.getPassing(),
+                card.getDribbling(),
+                card.getDefending(),
+                card.getPhysicality());
     }
 }
