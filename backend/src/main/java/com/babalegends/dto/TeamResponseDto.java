@@ -13,8 +13,8 @@ public record TeamResponseDto(
         @Schema(description = "Nome do time (ex: Time A, Time B)", example = "A")
         String name,
 
-        @Schema(description = "Média de rating/overall dos jogadores da equipe", example = "78.5")
-        double averageRating,
+        @Schema(description = "Média de rating/overall dos jogadores da equipe", example = "78")
+        int averageRating,
 
         @Schema(description = "Lista de jogadores que compõem a equipe")
         List<TeamPlayerResponseDto> players

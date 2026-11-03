@@ -6,6 +6,7 @@ import com.babalegends.dto.CardResponseDto;
 import com.babalegends.dto.MyTeamResponseDto;
 import com.babalegends.dto.TeamPlayerResponseDto;
 import com.babalegends.dto.TeamResponseDto;
+import com.babalegends.dto.UserOverallDto;
 import com.babalegends.entity.Match;
 import com.babalegends.entity.PlayerAttributes;
 import com.babalegends.entity.Team;
@@ -14,6 +15,7 @@ import com.babalegends.entity.User;
 import com.babalegends.entity.enums.MatchStatus;
 import com.babalegends.exception.ConflictException;
 import com.babalegends.exception.NotFoundException;
+import com.babalegends.mapper.CardMapper;
 import com.babalegends.repository.TeamPlayerRepository;
 import com.babalegends.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +45,7 @@ public class TeamService {
     private final AttendanceService attendanceService;
     private final TeamRepository teamRepository;
     private final TeamBalancer teamBalancer;
-    private final UserService userService;
+    private final CardMapper cardMapper;
 
     @Transactional
     public List<TeamResponseDto> drawTeams(UUID requesterId, UUID matchId, int teamCount) {
@@ -67,9 +69,9 @@ public class TeamService {
         }
 
         List<UUID> confirmedUsersIds = confirmedUsers.stream().map(User::getId).toList();
-        Map<UUID, Integer> playersOverall = playerAttributesService.getOverallByUserIds(confirmedUsersIds);
+        Map<UUID, UserOverallDto> playersOverall = playerAttributesService.getOverallDtoByUserIds(confirmedUsersIds);
         List<RatedPlayer> ratedPlayers = confirmedUsers.stream()
-                .map(user -> new RatedPlayer(user, playersOverall.getOrDefault(user.getId(), DEFAULT_RATING)))
+                .map(user -> new RatedPlayer(user, ratingOfDtoOrDefault(playersOverall, user.getId())))
                 .toList();
 
         List<List<RatedPlayer>> drawTeams = teamBalancer.draw(ratedPlayers, teamCount);
@@ -93,7 +95,7 @@ public class TeamService {
                 return teamPlayer;
             }).toList());
 
-            result.add(toDto(team, members));
+            result.add(toDto(team, members, playersOverall));
         }
 
         return result;
@@ -109,7 +111,7 @@ public class TeamService {
             return List.of();
         }
 
-        Map<UUID, Integer> overall = playerAttributesService.getOverallByUserIds(
+        Map<UUID, UserOverallDto> overall = playerAttributesService.getOverallDtoByUserIds(
                 teamPlayers.stream()
                         .map(teamPlayer -> teamPlayer.getUser().getId())
                         .collect(Collectors.toSet())
@@ -124,9 +126,9 @@ public class TeamService {
             Team team = list.getFirst().getTeam();
             List<RatedPlayer> members = list.stream()
                     .map(teamPlayer -> new RatedPlayer(teamPlayer.getUser(),
-                            overall.getOrDefault(teamPlayer.getUser().getId(), DEFAULT_RATING)))
+                            ratingOfDtoOrDefault(overall, teamPlayer.getUser().getId())))
                     .toList();
-            return toDto(team, members);
+            return toDto(team, members, overall);
         }).toList();
     }
 
@@ -147,7 +149,7 @@ public class TeamService {
 
         Map<UUID, PlayerAttributes> cardsByUserId = playerAttributesService.getAttributesByUserIds(myTeamPlayersIds);
         List<CardResponseDto> players = myTeamPlayers.stream()
-                .map(teamPlayer -> convertAttributesToCardResponse(teamPlayer.getUser(), cardsByUserId.get(teamPlayer.getUser().getId())))
+                .map(teamPlayer -> cardMapper.convertAttributesToCardResponse(teamPlayer.getUser(), cardsByUserId.get(teamPlayer.getUser().getId())))
                 .sorted(Comparator.comparingInt(CardResponseDto::overall).reversed())
                 .toList();
 
@@ -163,27 +165,28 @@ public class TeamService {
         return String.valueOf((char) ('A' + index));
     }
 
-    private TeamResponseDto toDto(Team team, List<RatedPlayer> members) {
-        List<TeamPlayerResponseDto> players = members.stream()
-                .sorted(Comparator.comparingInt(RatedPlayer::rating).reversed())
-                .map(member -> new TeamPlayerResponseDto(member.user().getId(),
-                        member.user().getName(), userService.getUserPictureUrl(member.user()), member.rating()))
-                .toList();
-        double average = members.stream().mapToInt(RatedPlayer::rating).average().orElse(0);
-        return new TeamResponseDto(team.getId(), team.getName(), Math.round(average * 10) / 10.0, players);
+    private int ratingOfDtoOrDefault(Map<UUID, UserOverallDto> overallByUserId, UUID userId) {
+        UserOverallDto dto = overallByUserId.get(userId);
+        return dto == null ? DEFAULT_RATING : dto.overall();
     }
 
-    private CardResponseDto convertAttributesToCardResponse(User user, PlayerAttributes card) {
-        return new CardResponseDto(
-                user.getId(),
-                user.getName(),
-                userService.getUserPictureUrl(user),
-                card.getOverall(),
-                card.getPace(),
-                card.getShooting(),
-                card.getPassing(),
-                card.getDribbling(),
-                card.getDefending(),
-                card.getPhysicality());
+    private TeamResponseDto toDto(Team team, List<RatedPlayer> members, Map<UUID, UserOverallDto> overallByUserId) {
+        List<TeamPlayerResponseDto> players = members.stream()
+                .sorted(Comparator.comparingInt(RatedPlayer::rating).reversed())
+                .map(member -> {
+                    User user = member.user();
+                    UserOverallDto userOverallDto = overallByUserId.get(user.getId());
+                    String cardPictureKey = userOverallDto == null ? null : userOverallDto.cardPicture();
+                    return new TeamPlayerResponseDto(
+                            user.getId(),
+                            user.getName(),
+                            cardMapper.getPictureUrl(cardPictureKey, user.getPicture()),
+                            member.rating());
+                })
+                .toList();
+        
+        int averageRating = (int) Math.round(members.stream().mapToInt(RatedPlayer::rating)
+                .average().orElse(0));
+        return new TeamResponseDto(team.getId(), team.getName(), averageRating, players);
     }
 }
